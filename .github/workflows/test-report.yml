@@ -2,6 +2,7 @@ name: 'Test Report'
 on:
   workflow_run:
     workflows: ['.NET']                     # runs after .NET workflow
+    branches: [main, githubaction]
     types:
       - completed
 jobs:
@@ -13,4 +14,4 @@ jobs:
         artifact: test-results            # artifact name
         name: Dotnet Tests                # Name of the check run which will be created
         path: '*.trx'                     # Path to test results (inside artifact .zip)
-        reporter: donet-trx               # Format of test results
+        reporter: dotnet-trx               # Format of test results
