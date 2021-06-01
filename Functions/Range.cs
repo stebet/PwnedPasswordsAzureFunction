@@ -11,6 +11,8 @@ namespace Functions
     /// </summary>
     public static class Range
     {
+        public static BlobStorage _blogStorage = null;
+
         /// <summary>
         /// Handle a request to /range/{hashPrefix}
         /// </summary>
@@ -43,8 +45,8 @@ namespace Functions
                 return PwnedResponse.CreateResponse(req, HttpStatusCode.BadRequest, "The hash prefix was not in a valid format");
             }
 
-            var storage = new BlobStorage(log);
-            var stream = storage.GetByHashesByPrefix(hashPrefix.ToUpper(), out var lastModified);
+            _blogStorage = _blogStorage ?? new BlobStorage(log);
+            var stream = _blogStorage.GetByHashesByPrefix(hashPrefix.ToUpperInvariant(), out var lastModified);
             var response = PwnedResponse.CreateResponse(req, HttpStatusCode.OK, null, stream, lastModified);
             return response;
         }
