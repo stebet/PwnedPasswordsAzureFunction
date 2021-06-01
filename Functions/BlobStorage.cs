@@ -3,6 +3,8 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -43,7 +45,7 @@ namespace Functions
         /// <param name="hashPrefix">The hash prefix to use to lookup the blob storage file</param>
         /// <param name="lastModified">Pointer to the DateTimeOffset for the last time that the blob was modified</param>
         /// <returns>Returns a stream to access the k-anonymity SHA-1 file</returns>
-        public Stream GetByHashesByPrefix(string hashPrefix, out DateTimeOffset? lastModified)
+        public async Task<(Stream stream, DateTimeOffset? lastModified)> GetByHashesByPrefix(string hashPrefix)
         {
             var fileName = $"{hashPrefix}.txt";
             var blockBlob = _container.GetBlockBlobReference(fileName);
@@ -52,21 +54,18 @@ namespace Functions
             {
                 var sw = new Stopwatch();
                 sw.Start();
-                var blobStream = blockBlob.OpenRead();
+                var blobStream = await blockBlob.OpenReadAsync();
                 sw.Stop();
                 _log.Info($"Blob Storage stream queried in {sw.ElapsedMilliseconds:n0}ms");
 
-                lastModified = blockBlob.Properties.LastModified;
-
-                return blobStream;
+                return (blobStream, blockBlob.Properties.LastModified);
             }
             catch (StorageException ex) when (ex.RequestInformation?.HttpStatusCode == 404)
             {
                 _log.Warning($"Blob Storage couldn't find file \"{fileName}\"");
             }
 
-            lastModified = null;
-            return null;
+            return (null, null);
         }
     }
 }

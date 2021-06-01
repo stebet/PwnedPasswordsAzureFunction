@@ -12,6 +12,10 @@ namespace Functions
     /// </summary>
     public static class PwnedResponse
     {
+        private static MediaTypeHeaderValue PlainTextHeaderValue = new MediaTypeHeaderValue("text/plain");
+        private static UTF8Encoding UTF8WithoutBomEncoding = new UTF8Encoding(false);
+        private static CacheControlHeaderValue CacheControlHeaderValue = new CacheControlHeaderValue { MaxAge = TimeSpan.FromDays(31), Public = true };
+
         /// <summary>
         /// Creates a response from the 
         /// </summary>
@@ -28,7 +32,8 @@ namespace Functions
             if (stream != null)
             {
                 msg.Content = new StreamContent(stream);
-                msg.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+                
+                msg.Content.Headers.ContentType = PlainTextHeaderValue;
 
                 if (lastModified != null)
                 {
@@ -37,15 +42,10 @@ namespace Functions
             }
             else
             {
-                msg.Content = content == null ? null : new StringContent(content, new UTF8Encoding(false), "text/plain");
+                msg.Content = content == null ? null : new StringContent(content, UTF8WithoutBomEncoding, "text/plain");
             }
 
-            msg.Headers.CacheControl = new CacheControlHeaderValue
-            {
-                MaxAge = TimeSpan.FromDays(31),
-                Public = true
-            };
-
+            msg.Headers.CacheControl = CacheControlHeaderValue;
             msg.Headers.Add("Arr-Disable-Session-Affinity", "True");
             msg.Headers.Add("Access-Control-Allow-Origin", "*");
 
