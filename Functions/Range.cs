@@ -1,9 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net;
+using System.Threading.Tasks;
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Net.Http.Headers;
 
 namespace Functions
 {
@@ -13,8 +13,7 @@ namespace Functions
     public class Range
     {
         private readonly BlobStorage _blobStorage;
-        private static readonly IActionResult NotFound = new ContentResult() { StatusCode = StatusCodes.Status404NotFound, Content = "The hash prefix was not found", ContentType = "text/plain" };
-        private static readonly IActionResult InvalidFormat = new ContentResult() { StatusCode = StatusCodes.Status400BadRequest, Content = "The hash prefix was not in a valid format", ContentType = "text/plain" };
+        
         /// <summary>
         /// Pwned Passwords - Range handler
         /// </summary>
@@ -23,7 +22,7 @@ namespace Functions
         {
             _blobStorage = blobStorage;
         }
-        
+
         /// <summary>
         /// Handle a request to /range/{hashPrefix}
         /// </summary>
@@ -31,16 +30,41 @@ namespace Functions
         /// <param name="hashPrefix">The passed hash prefix</param>
         /// <param name="log">Logger instance to emit diagnostic information to</param>
         /// <returns></returns>
-        [FunctionName("Range-GET")]
-        public async Task<IActionResult> RunAsync([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "range/{hashPrefix}")] HttpRequest req, string hashPrefix)
+        [Function("Range-GET")]
+        public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "range/{hashPrefix}")] HttpRequestData req, string hashPrefix)
         {
             if (!hashPrefix.IsHexStringOfLength(5))
             {
-                return InvalidFormat;
+                return InvalidFormat(req);
             }
 
             BlobStorageEntry? entry = await _blobStorage.GetByHashesByPrefix(hashPrefix.ToUpper());
-            return entry == null ? NotFound : new FileStreamResult(entry.Stream, "text/plain") { LastModified = entry.LastModified };
+            return entry == null ? NotFound(req) : File(req, entry);
+        }
+
+        private static HttpResponseData InvalidFormat(HttpRequestData req)
+        {
+            var response = req.CreateResponse(HttpStatusCode.BadRequest);
+            response.Headers.Add("Content-Type", "text/plain");
+            response.WriteString("The hash prefix was not in a valid format");
+            return response;
+        }
+
+        private static HttpResponseData NotFound(HttpRequestData req)
+        {
+            var response = req.CreateResponse(HttpStatusCode.NotFound);
+            response.Headers.Add("Content-Type", "text/plain");
+            response.WriteString("The hash prefix was not found");
+            return response;
+        }
+
+        private static HttpResponseData File(HttpRequestData req, BlobStorageEntry entry)
+        {
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/plain");
+            response.Headers.Add(HeaderNames.LastModified, entry.LastModified?.ToString("R"));
+            response.Body = entry.Stream;
+            return response;
         }
     }
 }
