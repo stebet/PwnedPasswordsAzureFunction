@@ -1,7 +1,14 @@
 {
   "version": "2.0",
-  "http": {
-    "routePrefix": ""
+  "extensions": {
+    "http": {
+      "routePrefix": "",
+      "customHeaders": {
+        "Cache-Control": "public; max-age=2678400",
+        "Arr-Disable-Session-Affinity": "true",
+        "Access-Control-Allow-Origin": "*"
+      }
+    }
   },
   "logging": {
     "applicationInsights": {

@@ -1,10 +1,9 @@
-﻿using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using System.Threading.Tasks;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 
 namespace Functions
 {
@@ -13,17 +12,16 @@ namespace Functions
     /// </summary>
     public class Range
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger _log;
-
+        private readonly BlobStorage _blobStorage;
+        private static readonly IActionResult NotFound = new ContentResult() { StatusCode = StatusCodes.Status404NotFound, Content = "The hash prefix was not found", ContentType = "text/plain" };
+        private static readonly IActionResult InvalidFormat = new ContentResult() { StatusCode = StatusCodes.Status400BadRequest, Content = "The hash prefix was not in a valid format", ContentType = "text/plain" };
         /// <summary>
         /// Pwned Passwords - Range handler
         /// </summary>
         /// <param name="configuration">Configuration instance</param>
-        public Range(IConfiguration configuration, ILoggerFactory logFactory)
+        public Range(BlobStorage blobStorage)
         {
-            _configuration = configuration;
-            _log = logFactory.CreateLogger("Range");
+            _blobStorage = blobStorage;
         }
         
         /// <summary>
@@ -33,44 +31,16 @@ namespace Functions
         /// <param name="hashPrefix">The passed hash prefix</param>
         /// <param name="log">Logger instance to emit diagnostic information to</param>
         /// <returns></returns>
-        [Function("Range-GET")]
-        public Task<HttpResponseData> RunAsync(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "range/{hashPrefix}")] HttpRequestData req,
-            string hashPrefix)
+        [FunctionName("Range-GET")]
+        public async Task<IActionResult> RunAsync([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "range/{hashPrefix}")] HttpRequest req, string hashPrefix)
         {
-            return GetData(req, hashPrefix);
-        }
-
-        /// <summary>
-        /// Get the data for the request
-        /// </summary>
-        /// <param name="req">The request message from the client</param>
-        /// <param name="hashPrefix">The passed hash prefix</param>
-        /// <param name="log">Logger instance to emit diagnostic information to</param>
-        /// <returns>Http Response message to return to the client</returns>
-        private async Task<HttpResponseData> GetData(
-            HttpRequestData req,
-            string hashPrefix)
-        {
-            if (string.IsNullOrEmpty(hashPrefix))
-            {
-                return PwnedResponse.CreateResponse(req, HttpStatusCode.BadRequest, "Missing hash prefix");
-            }
-
             if (!hashPrefix.IsHexStringOfLength(5))
             {
-                return PwnedResponse.CreateResponse(req, HttpStatusCode.BadRequest, "The hash prefix was not in a valid format");
+                return InvalidFormat;
             }
 
-            var storage = new BlobStorage(_configuration, _log);
-            var entry = await storage.GetByHashesByPrefix(hashPrefix.ToUpper());
-            if (entry == null)
-            {
-                return PwnedResponse.CreateResponse(req, HttpStatusCode.NotFound, "The hash prefix was not found");
-            }
-            
-            var response = PwnedResponse.CreateResponse(req, HttpStatusCode.OK, null, entry.Stream, entry.LastModified);
-            return response;
+            BlobStorageEntry? entry = await _blobStorage.GetByHashesByPrefix(hashPrefix.ToUpper());
+            return entry == null ? NotFound : new FileStreamResult(entry.Stream, "text/plain") { LastModified = entry.LastModified };
         }
     }
 }
