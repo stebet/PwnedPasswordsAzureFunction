@@ -4,9 +4,13 @@
     "routePrefix": ""
   },
   "logging": {
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Information"
+    },
     "applicationInsights": {
-      "samplingExcludedTypes": "Request",
       "samplingSettings": {
+        "excludedTypes": "Request,Exception",
         "isEnabled": true
       }
     }

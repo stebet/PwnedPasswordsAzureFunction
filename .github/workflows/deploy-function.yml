@@ -32,13 +32,10 @@ jobs:
       with:
         dotnet-version: 3.1.x
     
-    - name: Restore dependencies
-      run: dotnet restore
-    
-    - name: Build
-      run: dotnet build --no-restore --configuration Release --output ./output
+    - name: Build Function
+      run: dotnet build --configuration Release --output ./output
 
-    - name: 'Run Azure Functions Action'
+    - name: Deploy Function to Azure
       uses: Azure/functions-action@v1.3.1
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
