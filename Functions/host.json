@@ -17,9 +17,9 @@
       "default": "Information"
     },
     "applicationInsights": {
+      "EnableDependencyTracking": true,
       "samplingSettings": {
-        "excludedTypes": "Request,Exception",
-        "isEnabled": true
+        "isEnabled": false
       }
     }
   }
