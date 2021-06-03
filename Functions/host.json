@@ -12,9 +12,13 @@
     }
   },
   "logging": {
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Information"
+    },
     "applicationInsights": {
       "samplingSettings": {
-        "excludedTypes": "Request",
+        "excludedTypes": "Request,Exception",
         "isEnabled": true
       }
     }
