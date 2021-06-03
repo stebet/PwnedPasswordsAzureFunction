@@ -12,12 +12,8 @@
     }
   },
   "logging": {
-    "fileLoggingMode": "always",
-    "logLevel": {
-      "default": "Information"
-    },
     "applicationInsights": {
-      "EnableDependencyTracking": true,
+      "enableDependencyTracking": true,
       "samplingSettings": {
         "isEnabled": false
       }
