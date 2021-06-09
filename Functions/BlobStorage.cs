@@ -52,7 +52,7 @@ namespace Functions
                 var sw = Stopwatch.StartNew();
 
                 sw.Start();
-                var response = await blobClient.DownloadAsync(cancellationToken: cancellationToken);
+                var response = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
                 sw.Stop();
 
                 _log.LogInformation("Hash file downloaded in {ElapsedMilliseconds}ms", sw.ElapsedMilliseconds.ToString("n0"));

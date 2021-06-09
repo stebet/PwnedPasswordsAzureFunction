@@ -6,5 +6,5 @@ namespace Functions
     /// <summary>
     /// Blob storage entry
     /// </summary>
-    public record BlobStorageEntry(Stream Stream, DateTimeOffset? LastModified);
+    public record BlobStorageEntry(Stream Stream, DateTimeOffset LastModified);
 }
