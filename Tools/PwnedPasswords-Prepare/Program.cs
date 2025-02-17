@@ -23,33 +23,29 @@ var numName = JsonEncodedText.Encode("num");
 using FileStream input = File.OpenRead(args[0]);
 using var inputReader = new StreamReader(input);
 using FileStream output = File.Create(args[1]);
-using var outputWriter = new Utf8JsonWriter(output);
-
-outputWriter.WriteStartArray();
+using var outputWriter = new StreamWriter(output);
 int numPasswords = 0;
+Dictionary<string, int> passwords = new();
 while (!inputReader.EndOfStream)
 {
-    if (outputWriter.BytesPending > 16 * 1024)
-    {
-        await outputWriter.FlushAsync().ConfigureAwait(false);
-    }
-
     string? line = await inputReader.ReadLineAsync().ConfigureAwait(false);
     if (line != null)
     {
+        passwords[line] = passwords.TryGetValue(line, out int prevalence) ? prevalence + 1 : 1;
+        /*
         if (line.LastIndexOf(":") <= 0 || !int.TryParse(line.AsSpan()[line.LastIndexOf(":")..], out int prevalence))
         {
             prevalence = Random.Shared.Next(100) + 1;
         }
-
-        outputWriter.WriteStartObject();
-        outputWriter.WriteString(ntlmName, HashExtensions.CreateNTLMHash(line));
-        outputWriter.WriteString(sha1Name, HashExtensions.CreateSHA1Hash(line));
-        outputWriter.WriteNumber(numName, prevalence);
-        outputWriter.WriteEndObject();
-        numPasswords++;
+        */
     }
 }
-outputWriter.WriteEndArray();
+
+foreach (KeyValuePair<string, int> password in passwords)
+{
+    outputWriter.WriteLine($"{HashExtensions.CreateSHA1Hash(password.Key)}:{HashExtensions.CreateNTLMHash(password.Key)}:{password.Value}");
+    numPasswords++;
+}
+
 await outputWriter.FlushAsync().ConfigureAwait(false);
 Console.WriteLine($"Finished preparing {numPasswords} passwords into {args[1]}.");

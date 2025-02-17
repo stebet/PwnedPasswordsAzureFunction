@@ -29,13 +29,14 @@ public static class MD4
         }
 
         int requiredBytes = paddedLenBit + 8;
-        using IMemoryOwner<byte> paddedMessageArray = MemoryPool<byte>.Shared.Rent(requiredBytes);
-        Memory<byte> paddedMessage = paddedMessageArray.Memory[..requiredBytes];
-        paddedMessage.Span.Clear();
-        source.CopyTo(paddedMessage.Span);
+        byte[]? rentedBytes = null;
+        Span<byte> paddedMessageBytes = requiredBytes <= 1024 ? stackalloc byte[1024] : (rentedBytes = ArrayPool<byte>.Shared.Rent(requiredBytes)).AsSpan();
+        Span<byte> paddedMessage = paddedMessageBytes[..requiredBytes];
+        paddedMessage.Clear();
+        source.CopyTo(paddedMessage);
 
-        paddedMessage.Span[source.Length] = 0x80;
-        Unsafe.WriteUnaligned(ref paddedMessage.Span[paddedLenBit], BitConverter.IsLittleEndian ? (ulong)(source.Length * 8) : BinaryPrimitives.ReverseEndianness((ulong)(source.Length * 8)));
+        paddedMessage[source.Length] = 0x80;
+        Unsafe.WriteUnaligned(ref paddedMessage[paddedLenBit], BitConverter.IsLittleEndian ? (ulong)(source.Length * 8) : BinaryPrimitives.ReverseEndianness((ulong)(source.Length * 8)));
 
         uint regA = 0x67452301;
         uint regB = 0xEFCDAB89;
@@ -43,7 +44,7 @@ public static class MD4
         uint regD = 0x10325476;
 
         Span<uint> processingBuffer = stackalloc uint[16];
-        Span<uint> uints = MemoryMarshal.Cast<byte, uint>(paddedMessage.Span);
+        Span<uint> uints = MemoryMarshal.Cast<byte, uint>(paddedMessage);
 
         // Note: ... "Process each 16-word block" ...
         for (int i = 0; i < paddedMessage.Length / 64; i++)
@@ -108,5 +109,10 @@ public static class MD4
         Unsafe.WriteUnaligned(ref destination[4], BitConverter.IsLittleEndian ? regB : BinaryPrimitives.ReverseEndianness(regB));
         Unsafe.WriteUnaligned(ref destination[8], BitConverter.IsLittleEndian ? regC : BinaryPrimitives.ReverseEndianness(regC));
         Unsafe.WriteUnaligned(ref destination[12], BitConverter.IsLittleEndian ? regD : BinaryPrimitives.ReverseEndianness(regD));
+
+        if (rentedBytes != null)
+        {
+            ArrayPool<byte>.Shared.Return(rentedBytes);
+        }
     }
 }

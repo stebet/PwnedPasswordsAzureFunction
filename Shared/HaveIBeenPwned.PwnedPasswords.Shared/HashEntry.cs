@@ -68,6 +68,14 @@ namespace HaveIBeenPwned.PwnedPasswords
             return TryParseFromText(chars.Slice(0, prefix.Length + numChars), out entry);
         }
 
+        public static bool TryParseFromText(ReadOnlySpan<char> prefix, ReadOnlySpan<char> rest, out HashEntry entry)
+        {
+            Span<char> chars = stackalloc char[prefix.Length + rest.Length];
+            prefix.CopyTo(chars);
+            rest.CopyTo(chars.Slice(prefix.Length));
+            return TryParseFromText(chars, out entry);
+        }
+
         public static bool TryParseFromText(ReadOnlySequence<byte> hashtext, out HashEntry entry)
         {
             int textLength = (int)hashtext.Length;
@@ -117,24 +125,36 @@ namespace HaveIBeenPwned.PwnedPasswords
                 return false;
             }
 
-            int colonIndex = hashtext.IndexOf(':');
-            if (colonIndex < 2 || (colonIndex == hashtext.Length))
+            Span<Range> ranges = stackalloc Range[4];
+            var splits = hashtext.Split(ranges, ':');
+            if (splits != 2)
+            {
+                hashEntry = default;
+                return false;
+            }
+
+            int firstRangeLength = ranges[0].End.Value - ranges[0].Start.Value;
+
+            if (firstRangeLength == 0 || firstRangeLength % 2 == 1)
+            {
+                hashEntry = default;
+                return false;
+            }
+
+            int secondRangeLength = ranges[1].End.Value - ranges[1].Start.Value;
+
+            if (secondRangeLength == 0)
+            {
+                hashEntry = default;
+                return false;
+            }
+
+            if (!int.TryParse(hashtext[ranges[1]], out int prevalence))
             {
                 return false;
             }
 
-            ReadOnlySpan<char> hex = hashtext.Slice(0, colonIndex);
-            if (hex.Length % 2 == 1)
-            {
-                return false;
-            }
-
-            ReadOnlySpan<char> prevalenceString = hashtext.Slice(colonIndex + 1);
-            if (!int.TryParse(prevalenceString, out int prevalence))
-            {
-                return false;
-            }
-
+            ReadOnlySpan<char> hex = hashtext[ranges[0]];
             int hexLengthInBytes = hex.Length / 2;
             Span<byte> bytes = stackalloc byte[hexLengthInBytes];
             for (int i = 0; i < hexLengthInBytes; i++)
@@ -335,8 +355,6 @@ namespace HaveIBeenPwned.PwnedPasswords
             Span<char> finalChars = hashChars.Slice(omitPrefix ? 5 : 0, (omitPrefix ? (hashLength - 5) : hashLength) + 1 + intSize);
             Encoding.ASCII.GetBytes(finalChars, bufferWriter);
         }
-
-
 
         public readonly void Dispose()
         {
