@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "azure-functions": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/azure-functions/SKILL.md",
+      "computedHash": "dd3a03688b12293787847845586c281027004f608aba2f1b66251480017137cc"
+    }
+  }
+}

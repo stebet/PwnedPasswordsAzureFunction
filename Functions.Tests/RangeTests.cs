@@ -38,6 +38,19 @@ public class RangeTests
     }
 
     [Fact]
+    public async Task Returns_blob_content_hash_header_when_available()
+    {
+        byte[] contentHash = [0x01, 0x02, 0x03, 0x04];
+        using var content = new MemoryStream("ABCDEF:1"u8.ToArray());
+        var result = new PwnedPasswordsFileResult(new PwnedPasswordsFile(content, DateTimeOffset.UtcNow, "\"etag\"", contentHash), []);
+        var context = new DefaultHttpContext();
+
+        await result.ExecuteResultAsync(new ActionContext { HttpContext = context });
+
+        Assert.Equal(Convert.ToBase64String(contentHash), context.Response.Headers["hibp-range-md5"].ToString());
+    }
+
+    [Fact]
     public async Task Returns_notfound_if_hashprefix_doesnt_exist()
     {
         var mockStorage = new Mock<IFileStorage>();
