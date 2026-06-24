@@ -61,6 +61,7 @@ public class Range(ILogger<Range> log, IFileStorage fileStorage)
 
 public class PwnedPasswordsFileResult(PwnedPasswordsFile pwnedPasswordsFile, IList<Microsoft.Net.Http.Headers.StringWithQualityHeaderValue> acceptEncoding) : IActionResult
 {
+    private const string BlobContentMd5HeaderName = "hibp-range-md5";
     private static readonly RecyclableMemoryStreamManager s_recyclableMemoryStreamManager = new();
 
     public async Task ExecuteResultAsync(ActionContext context)
@@ -69,6 +70,11 @@ public class PwnedPasswordsFileResult(PwnedPasswordsFile pwnedPasswordsFile, ILi
         context.HttpContext.Response.ContentType = "text/plain";
         context.HttpContext.Response.Headers.LastModified = pwnedPasswordsFile.LastModified.ToString("R");
         context.HttpContext.Response.Headers.ETag = pwnedPasswordsFile.ETag;
+        if (pwnedPasswordsFile.ContentHash != null)
+        {
+            context.HttpContext.Response.Headers[BlobContentMd5HeaderName] = Convert.ToBase64String(pwnedPasswordsFile.ContentHash);
+        }
+
         using RecyclableMemoryStream tempStream = s_recyclableMemoryStreamManager.GetStream();
         using Stream pwnedStream = pwnedPasswordsFile.Content;
         if (acceptEncoding.Any(x => x.Value == "br"))
